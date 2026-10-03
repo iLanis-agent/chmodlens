@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChmodLens - Unix file permission calculator</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#0f1a17; color:#f3ede6; line-height:1.5; }
+  .wrap { max-width:700px; margin:0 auto; padding:26px 16px 50px; }
+  h1 { font-size:28px; } h1 span { color:#5eead4; }
+  .sub { color:#b5aa9c; margin:6px 0 16px; }
+  .card { background:#1b2a25; border-radius:14px; padding:14px; margin-bottom:12px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:10px; }
+  label { font-size:12px; color:#b5aa9c; display:block; margin-bottom:3px; }
+  input,select { width:100%; background:#0f1a17; color:#f3ede6; border:1px solid #574f48; border-radius:8px; padding:8px; font-size:15px; font-family:inherit; }
+  button { background:#1f5a4d; color:#f3ede6; border:0; padding:8px 14px; border-radius:8px; cursor:pointer; font-size:14px; margin-right:6px; margin-top:10px; }
+  table { width:100%; border-collapse:collapse; } td,th { text-align:left; padding:8px 4px; border-bottom:1px solid #433c36; } th { font-size:12px; color:#b5aa9c; font-weight:600; }
+  td.v { font-size:22px; font-weight:800; color:#5eead4; } tr.me td.v { color:#f3ede6; }
+  .stats { display:flex; gap:22px; flex-wrap:wrap; margin-top:12px; } .stats b { display:block; font-size:20px; } .muted { color:#b5aa9c; font-size:13px; }
+  .err { color:#ff9c8a; } .note { font-size:12.5px; color:#8c8174; margin-top:6px; }
+
+  td.v { font-size:17px; } td, th { font-size:14px; } .bar { height:10px; background:#0f1a17; border-radius:6px; overflow:hidden; margin-top:6px; } .bar i { display:block; height:100%; background:#5eead4; } .bar i.over { background:#ff7b72; } .no { color:#ff9c8a; }
+  .cb { display:inline-flex; align-items:center; gap:4px; margin-right:12px; font-size:14px; color:#f3ede6; } .cb input { width:auto; } .big { font-family:monospace; font-size:26px; font-weight:800; color:#5eead4; } td.v.m { font-family:monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Chmod<span>Lens</span></h1>
+  <div class="sub">Tick boxes or type a mode. See 755, rwxr-xr-x and the chmod you need, side by side.</div>
+  <div class="card">
+    <table id="grid"><tr><th></th><th>read</th><th>write</th><th>execute</th><th>special</th></tr>
+      <tr><td>Owner (u)</td><td><input type="checkbox" id="b8"></td><td><input type="checkbox" id="b7"></td><td><input type="checkbox" id="b6"></td><td><label class="cb"><input type="checkbox" id="b11">setuid</label></td></tr>
+      <tr><td>Group (g)</td><td><input type="checkbox" id="b5"></td><td><input type="checkbox" id="b4"></td><td><input type="checkbox" id="b3"></td><td><label class="cb"><input type="checkbox" id="b10">setgid</label></td></tr>
+      <tr><td>Other (o)</td><td><input type="checkbox" id="b2"></td><td><input type="checkbox" id="b1"></td><td><input type="checkbox" id="b0"></td><td><label class="cb"><input type="checkbox" id="b9">sticky</label></td></tr>
+    </table>
+    <div class="grid" style="margin-top:10px">
+      <div><label>Octal</label><input id="oct" value="755" style="font-family:monospace"></div>
+      <div><label>Symbolic (as in ls -l)</label><input id="sym" value="rwxr-xr-x" style="font-family:monospace"></div>
+    </div>
+    <div style="margin-top:10px"><span class="big" id="big"></span></div>
+    <div id="expl" class="muted" style="margin-top:6px"></div>
+    <button id="p1">644</button><button id="p2">755</button><button id="p3">600</button><button id="p4">4755</button><button id="p5">1777</button><button id="p6">2775</button>
+  </div>
+  <div class="card">
+    <h2 style="margin:0 0 8px;font-size:15px">Apply a chmod expression</h2>
+    <div class="grid"><div><label>Expression (u+x,go-w or 640)</label><input id="expr" value="g+w,o-r" style="font-family:monospace"></div>
+    <div><label>Target</label><select id="kind"><option value="f">File</option><option value="d">Directory</option></select></div>
+    <div><label>Umask (matters only when no u/g/o/a is given)</label><input id="um" value="022" style="font-family:monospace"></div></div>
+    <div id="res" style="margin-top:8px"></div>
+  </div>
+  <div class="card">
+    <h2 style="margin:0 0 8px;font-size:15px">What a umask gives new files</h2>
+    <div id="umr"></div>
+  </div>
+  <div class="note">Follows GNU coreutils chmod on Linux. Its test fixtures (652 cases) come from running chmod 8.32 on a real file and directory. Octal digits add read 4, write 2, execute 1 per class; a leading digit adds setuid 4, setgid 2, sticky 1. In ls output a special bit shows as s or t over an execute bit, and as S or T when execute is off. X sets execute only on directories or when some execute bit is already set. On directories GNU chmod keeps setuid and setgid unless the expression names s. New files start at 666 and directories at 777, minus the umask. The first mode you edit is the starting point for the expression; other systems (BSD, macOS) differ in details. Runs in your browser, nothing stored.</div>
+</div>
+<script src="engine.js"></script>
+<script>
+(function () {
+  var M = window.ChmodLens, $ = function (i) { return document.getElementById(i); };
+  var mode = 493;
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+  var NAMES = ['read', 'write', 'execute'];
+  function explain(m) {
+    var who = ['Owner', 'Group', 'Others'], out = [];
+    for (var g = 0; g < 3; g++) {
+      var b = (m >> (6 - g * 3)) & 7, p = [];
+      if (b & 4) p.push('read'); if (b & 2) p.push('write'); if (b & 1) p.push('execute');
+      out.push(who[g] + ': ' + (p.length ? p.join(', ') : 'nothing'));
+    }
+    var sp = [];
+    if (m & 2048) sp.push('setuid (runs as the owner)'); if (m & 1024) sp.push('setgid'); if (m & 512) sp.push('sticky');
+    return out.join('. ') + '.' + (sp.length ? ' Special: ' + sp.join(', ') + '.' : '');
+  }
+  function set(m, skip) {
+    mode = m & 4095;
+    if (skip !== 'oct') $('oct').value = M.octal(mode, 3);
+    if (skip !== 'sym') $('sym').value = M.symbolic(mode);
+    for (var i = 0; i < 12; i++) $('b' + i).checked = !!(mode & (1 << i));
+    $('big').textContent = M.octal(mode, 4) + '  ' + M.symbolic(mode);
+    $('expl').textContent = explain(mode);
+    $('oct').style.borderColor = $('sym').style.borderColor = '';
+    run();
+  }
+  function run() {
+    var um = M.parseOctal($('um').value);
+    if (um === null || um > 511) { $('res').innerHTML = '<div class="err">Umask must be octal like 022.</div>'; return; }
+    var r = M.apply(mode, $('expr').value, $('kind').value === 'd', um);
+    $('res').innerHTML = r.error ? '<div class="err">' + esc(r.error) + '</div>' :
+      '<div>Starting at <b>' + M.octal(mode, 4) + '</b> (' + M.symbolic(mode) + '), result: <span class="big">' + M.octal(r.mode, 4) + '</span> <span style="font-family:monospace">' + M.symbolic(r.mode) + '</span></div><div><button id="use" style="margin-top:6px">Use this result</button></div>';
+    if (!r.error) $('use').onclick = function () { set(r.mode); };
+    var u = M.umaskResult(um);
+    $('umr').innerHTML = '<table><tr><td>New file</td><td class="v m">' + M.octal(u.file, 3) + ' ' + M.symbolic(u.file) + '</td></tr><tr><td>New directory</td><td class="v m">' + M.octal(u.dir, 3) + ' ' + M.symbolic(u.dir) + '</td></tr></table><div class="muted">With umask ' + M.octal(um, 3) + ' (666 and 777 with the umask bits cleared).</div>';
+  }
+  $('oct').oninput = function () { var m = M.parseOctal($('oct').value); if (m === null) { $('oct').style.borderColor = '#ff9c8a'; return; } set(m, 'oct'); };
+  $('sym').oninput = function () { var m = M.fromSymbolic($('sym').value); if (m === null) { $('sym').style.borderColor = '#ff9c8a'; return; } set(m, 'sym'); };
+  for (var i = 0; i < 12; i++) (function (i) { $('b' + i).onchange = function () { set($('b' + i).checked ? mode | (1 << i) : mode & ~(1 << i)); }; })(i);
+  $('expr').oninput = $('um').oninput = $('kind').onchange = run;
+  [['p1', 420], ['p2', 493], ['p3', 384], ['p4', 2541], ['p5', 1023 + 512 * 1 - 0], ['p6', 1533]].forEach(function (p) { $(p[0]).onclick = function () { set(p[1]); }; });
+  $('p5').onclick = function () { set(parseInt('1777', 8)); }; $('p4').onclick = function () { set(parseInt('4755', 8)); }; $('p6').onclick = function () { set(parseInt('2775', 8)); };
+  set(493);
+})();
+</script>
+</body>
+</html>
