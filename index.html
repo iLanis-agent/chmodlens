@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ChmodLens - Unix file permission calculator</title>
+<meta name="description" content="Unix file permission calculator: octal, rwx, chmod expressions, setuid/setgid/sticky and umask, checked against GNU chmod.">
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#0f1a17; color:#f3ede6; line-height:1.6; }
+  .wrap { max-width:680px; margin:0 auto; padding:48px 20px 60px; }
+  .logo { font-size:46px; font-weight:800; } .logo span { color:#5eead4; }
+  .tag { font-size:19px; margin-top:10px; color:#ded5ca; }
+  .cta { display:inline-block; margin-top:26px; background:#5eead4; color:#0f1a17; font-weight:700; padding:14px 30px; border-radius:12px; text-decoration:none; }
+  h2 { font-size:21px; margin:40px 0 10px; } li { color:#b9aea1; margin-bottom:8px; } ul { margin-left:20px; }
+  .demo { margin-top:26px; background:#1b2a25; border-radius:14px; padding:18px; } .demo b { color:#5eead4; }
+  footer { margin-top:50px; font-size:13px; color:#8c8174; } a { color:#5eead4; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Chmod<span>Lens</span></div>
+  <div class="tag">chmod 755 means what, exactly? Tick the boxes and see.</div>
+  <a class="cta" href="app.html">Open the app</a>
+  <div class="demo"><b>755</b> = rwxr-xr-x: owner reads, writes and runs; everyone else reads and runs. <b>u+x,g-w</b> on 664 gives <b>744</b>.</div>
+  <h2>What it does</h2>
+  <ul><li>Octal, rwx and checkboxes stay in sync, including setuid, setgid and sticky (s, S, t, T)</li><li>Apply a chmod expression like u+x,go-w, g=u or a+X to a file or a directory</li><li>See what a umask gives new files and directories</li><li>Checked against 652 results from real GNU chmod 8.32</li></ul>
+  <footer>Linux/GNU chmod semantics; BSD and macOS differ in details. Static, client-side, nothing stored. <a href="https://github.com/iLanis-agent/chmodlens">Source</a></footer>
+</div>
+</body>
+</html>
